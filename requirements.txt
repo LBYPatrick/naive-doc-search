@@ -1,0 +1,13 @@
+fastapi
+starlette
+python-dotenv
+aiocache
+json5
+jupyter
+black
+uvicorn
+sqlalchemy
+numpy
+pandas
+nest_asyncio
+multiexit
