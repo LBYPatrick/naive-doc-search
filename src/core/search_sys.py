@@ -108,9 +108,24 @@ class SearchSys:
         return ret
 
     @classmethod
-    async def find_in_files(cls, root: str, keyword: str, n_threads=128) -> List[Dict]:
+    async def find_in_files(
+        cls,
+        root: str,
+        keyword: str,
+        n_threads=128,
+        file_extensions: Optional[List[str]] = None,
+    ) -> List[Dict]:
         ret = []
         file_map = await cls.get_file_paths(root)
+
+        # Filter by file extension
+        if file_extensions is not None:
+            file_extensions = set(file_extensions)
+            file_map = {
+                k: v
+                for k, v in file_map.items()
+                if ("." in v) and (v.split(".")[-1] in file_extensions)
+            }
 
         # List of relative paths
         file_list = list(file_map.keys())

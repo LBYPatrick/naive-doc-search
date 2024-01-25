@@ -253,9 +253,9 @@ class Util:
 
         return ret
 
-    @staticmethod
-    def print_msg(tag, msg, require_stack=False, tail="\n", is_stderr=False):
-        app_name = Util.get_env_param("app_name")
+    @classmethod
+    def print_msg(cls, tag, msg, require_stack=False, tail="\n", is_stderr=False):
+        app_name = cls.get_env_param("app_name", "naive_doc_search")
 
         msg = Util.get_proper_msg(msg)
         time = datetime.datetime.now().isoformat()
@@ -373,11 +373,9 @@ class Util:
 
             ret = default_value if result is None else result
 
-            # 按照用户的要求把输出cast
             if cast_type is not None and ret is not None:
                 ret = Util.str_to_bool(ret) if cast_type is bool else cast_type(ret)
 
-            # 留一下env设置的值
             if ret is not None:
                 Util.env_vals[str(key).lower()] = ret
 
@@ -431,11 +429,9 @@ class Util:
             pickle.dump(obj, file)
             file.close()
 
-            # 删掉原文件
             if os.path.isfile(path):
                 os.remove(path)
 
-            # 将临时文件移动到目标位置
             shutil.move(tmp_path, path)
 
             return path

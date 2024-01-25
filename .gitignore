@@ -162,3 +162,4 @@ cython_debug/
 notebooks/
 .idea/
 **/.DS_Store
+config.json
