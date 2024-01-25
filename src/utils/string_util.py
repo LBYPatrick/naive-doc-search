@@ -1,6 +1,8 @@
 import functools
 import re
 
+from utils.util import Util
+
 
 class StringUtil:
     @staticmethod
