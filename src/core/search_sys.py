@@ -1,8 +1,8 @@
 from ast import Dict
 import functools
-from typing import List, AnyStr
+import string
+from typing import List, AnyStr, Optional
 import asyncio
-
 import aiocache
 
 from src.utils.util import Util
@@ -30,7 +30,7 @@ class SearchSys:
     @aiocache.cached(
         ttl=600, key_builder=lambda *args, **kwargs: Util.func_hash(*args, **kwargs)
     )
-    async def read_all(cls, paths: List[str]) -> List[List[str]]:
+    async def read_all(cls, paths: List[str]) -> Dict:
         """
         Reads all files in parallel!
         """
@@ -38,3 +38,113 @@ class SearchSys:
         contents = await asyncio.gather(*[cls.read_file(path) for path in paths])
 
         return {path: content for path, content in zip(paths, contents)}
+
+    @classmethod
+    def find_in_file(
+        cls, keyword: str, lines: List[str], context_length: 32, path: Optional[str]
+    ) -> List[Dict]:
+        ret = []
+
+        # Delete empty lines
+        lines = [line for line in lines if len(line.strip()) > 0]
+        sz_lines = len(lines)
+
+        chunks = []
+
+        # Group lines into chunks
+        for i in range(0, sz_lines, context_length):
+            if i >= sz_lines:
+                break
+            chunks.append("\n".join(lines[i : min(sz_lines, i + context_length)]))
+
+        lower_chunks = [chunk.lower() for chunk in chunks]
+        lower_keyword = keyword.lower()
+        idxes = [i for i in range(len(chunks))]
+
+        for idx, lower, raw in zip(idxes, lower_chunks, chunks):
+            # Case sensitive
+            if keyword in raw:
+                ret.append(
+                    {
+                        "type": "exact",
+                        "keyword": keyword,
+                        "input_keyword": keyword,
+                        "chunk": raw.split("\n"),
+                        "priority": 0,
+                        "path": path or "anonymous",
+                    }
+                )
+            # Case insensitive
+            elif lower_keyword in lower:
+                ret.append(
+                    {
+                        "type": "bad_case",
+                        "keyword": lower_keyword,
+                        "input_keyword": keyword,
+                        "chunk": raw.split("\n"),
+                        "priority": 1,
+                        "path": path or "anonymous",
+                    }
+                )
+            else:
+                space_only = str.maketrans("", "", string.punctuation)
+                broken_keys = [
+                    key.lower() for key in keyword.translate(space_only).split()
+                ]
+
+                for key in broken_keys:
+                    if key in lower:
+                        ret.append(
+                            {
+                                "type": "subset",
+                                "keyword": key,
+                                "input_keyword": keyword,
+                                "chunk": raw.split("\n"),
+                                "priority": 1,
+                                "path": path or "anonymous",
+                            }
+                        )
+
+        return ret
+
+    @classmethod
+    async def find_in_files(cls, root: str, keyword: str, n_threads=128) -> List[Dict]:
+        ret = []
+        file_map = await cls.get_file_paths(root)
+
+        # List of relative paths
+        file_list = list(file_map.keys())
+        sz_list = len(file_list)
+
+        for i in range(0, sz_list, n_threads):
+            if i >= sz_list:
+                break
+
+            # Now 'chunk' contains a subset of the original list with at most 128 elements
+            chunk = file_list[i : min(i + n_threads, sz_list)]
+
+            files = await cls.read_all(
+                [file_map[relative_path] for relative_path in chunk]
+            )
+
+            coroutines = [
+                Util.sync_to_async(
+                    functools.partial(
+                        cls.find_in_file,
+                        keyword=keyword,
+                        lines=lines,
+                        context_length=4,
+                        path=path,
+                    )
+                )
+                for path, lines in zip(chunk, list(files.values()))
+            ]
+
+            chunk_res: List[List[Dict]] = await asyncio.gather(*coroutines)
+
+            for chk in chunk_res:
+                ret += chk
+
+        ret.sort(key=lambda entry: entry["priority"])
+
+        return ret
