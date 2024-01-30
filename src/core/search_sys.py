@@ -47,7 +47,44 @@ class SearchSys:
 
         # Delete empty lines
         lines = [line for line in lines if len(line.strip()) > 0]
+        full_doc = "\n".join(lines)
         sz_lines = len(lines)
+
+        # Attempt to parse title
+        title = path
+
+        # Jekyll Markdown?
+        if path.endswith(".markdown"):
+            has_dashes_once = False
+
+            for ind in range(len(lines)):
+                line = lines[ind]
+
+                if line.startswith("---"):
+                    if has_dashes_once:
+                        break
+
+                    has_dashes_once = True
+
+                # Extract page title if found
+                if line.startswith("title: "):
+                    title = line.split("title: ")[-1]
+                    break
+        elif path.endswith(".html"):
+            # Let's extract <head> content
+            start_index = full_doc.find("<head>") + len("<head>")
+            end_index = full_doc.find("</head>")
+
+            # Extract lines belonging to the head
+            head_content = full_doc[start_index:end_index].strip()
+
+            # Now look for title
+            start_index = full_doc.find("<title>") + len("<title>")
+            end_index = full_doc.find("</title>")
+
+            # If there is indeed a title set, grab it!
+            if end_index != -1:
+                title = full_doc[start_index:end_index].strip()
 
         chunks = []
 
@@ -67,6 +104,7 @@ class SearchSys:
                 ret.append(
                     {
                         "type": "exact",
+                        "title": title,
                         "keyword": keyword,
                         "input_keyword": keyword,
                         "chunk": raw.split("\n"),
@@ -79,6 +117,7 @@ class SearchSys:
                 ret.append(
                     {
                         "type": "bad_case",
+                        "title": title,
                         "keyword": lower_keyword,
                         "input_keyword": keyword,
                         "chunk": raw.split("\n"),
@@ -97,6 +136,7 @@ class SearchSys:
                         ret.append(
                             {
                                 "type": "subset",
+                                "title": title,
                                 "keyword": key,
                                 "input_keyword": keyword,
                                 "chunk": raw.split("\n"),
