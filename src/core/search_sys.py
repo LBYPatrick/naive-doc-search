@@ -125,25 +125,26 @@ class SearchSys:
                         "path": path or "anonymous",
                     }
                 )
-            else:
-                space_only = str.maketrans("", "", string.punctuation)
-                broken_keys = [
-                    key.lower() for key in keyword.translate(space_only).split()
-                ]
+            # Disable subset search since it is NOT reliable
+            # else:
+            #     space_only = str.maketrans("", "", string.punctuation)
+            #     broken_keys = [
+            #         key.lower() for key in keyword.translate(space_only).split()
+            #     ]
 
-                for key in broken_keys:
-                    if key in lower:
-                        ret.append(
-                            {
-                                "type": "subset",
-                                "title": title,
-                                "keyword": key,
-                                "input_keyword": keyword,
-                                "chunk": raw.split("\n"),
-                                "priority": 1,
-                                "path": path or "anonymous",
-                            }
-                        )
+            #     for key in broken_keys:
+            #         if key in lower:
+            #             ret.append(
+            #                 {
+            #                     "type": "subset",
+            #                     "title": title,
+            #                     "keyword": key,
+            #                     "input_keyword": keyword,
+            #                     "chunk": raw.split("\n"),
+            #                     "priority": 1,
+            #                     "path": path or "anonymous",
+            #                 }
+            #             )
 
         return ret
 
