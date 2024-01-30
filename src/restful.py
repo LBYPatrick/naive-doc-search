@@ -5,6 +5,7 @@ import os
 import sys
 import uvicorn
 from fastapi import FastAPI
+import ssl
 from starlette.middleware.cors import CORSMiddleware
 from starlette.requests import Request
 from typing import Dict, List, Optional
@@ -103,9 +104,23 @@ def start_server(host: str = "0.0.0.0", port: int = 3000):
         allow_headers=["*"],
     )
 
-    Util.info(f"Naive-doc-search is alive at address {host}:{port}!")
+    try:
+    
+        if Config.get_config_param("https",False,bool):
 
-    uvicorn.run(app, host=host, port=port)
+
+            cert_path, privkey_path = Config.get_config_param("cert",None,str), Config.get_config_param("privkey",None,str)
+
+            if cert_path is None or privkey_path is None:
+                raise Exception("Either cert path or privkey path cannot be read!")
+        
+        uvicorn.run(app, host=host, port=port,ssl_keyfile=privkey_path,ssl_certfile=cert_path)
+    except Exception as e:
+        Util.error(e)
+        Util.info("Falling back to HTTP mode...")
+        uvicorn.run(app, host=host, port=port)
+
+    Util.info(f"Naive-doc-search is alive at address {host}:{port}!")
 
 
 if __name__ == "__main__":
