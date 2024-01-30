@@ -54,7 +54,7 @@ class SearchSys:
         title = path
 
         # Jekyll Markdown?
-        if path.endswith(".markdown"):
+        if path.endswith(".markdown") or path.endswith(".md"):
             has_dashes_once = False
 
             for ind in range(len(lines)):
